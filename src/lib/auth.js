@@ -1,21 +1,8 @@
 /**
  * auth.js — Production Firebase Auth + Firestore
  *
- * Replaces the old localStorage-only auth.
- * Password hashing is handled server-side via bcryptjs in Vercel API routes.
- * Client uses Firebase Auth (email/password) — Firebase hashes passwords automatically.
- *
- * Firestore schema — collection "users":
- *   {
- *     uid:             string  (Firebase Auth UID)
- *     name:            string
- *     email:           string
- *     plan:            'free' | 'premium'
- *     planExpiry:      ISO string | null
- *     watchedToday:    number
- *     lastWatchedDate: string  (toDateString)
- *     createdAt:       ISO string
- *   }
+ * Fix: onSessionChange selalu re-fetch Firestore (bukan dari cache)
+ * sehingga localStorage yang di-cheat akan selalu ditimpa data asli.
  */
 
 import {
@@ -30,7 +17,6 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  serverTimestamp,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 
@@ -38,15 +24,15 @@ import { auth, db } from './firebase'
 // HELPERS
 // ─────────────────────────────────────────────
 
-function sessionKey() { return 'flixify_session_v2' }
+const SESSION_KEY = 'flixify_session_v2'
 
 function cacheSession(data) {
-  if (data) localStorage.setItem(sessionKey(), JSON.stringify(data))
-  else       localStorage.removeItem(sessionKey())
+  if (data) localStorage.setItem(SESSION_KEY, JSON.stringify(data))
+  else       localStorage.removeItem(SESSION_KEY)
 }
 
 export function getSession() {
-  try { return JSON.parse(localStorage.getItem(sessionKey()) || 'null') }
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null') }
   catch { return null }
 }
 
@@ -58,18 +44,21 @@ async function fetchUserDoc(uid) {
 function buildSession(uid, data) {
   return {
     userId:          uid,
-    name:            data.name  || '',
-    email:           data.email || '',
-    plan:            data.plan  || 'free',
-    planExpiry:      data.planExpiry || null,
+    name:            data.name            || '',
+    email:           data.email           || '',
+    plan:            data.plan            || 'free',
+    planExpiry:      data.planExpiry      || null,
     watchedToday:    data.watchedToday    || 0,
     lastWatchedDate: data.lastWatchedDate || null,
   }
 }
 
 // ─────────────────────────────────────────────
-// AUTH STATE LISTENER  (call once at app root)
+// AUTH STATE LISTENER
 // ─────────────────────────────────────────────
+// PENTING: Setiap auth state change (termasuk refresh halaman),
+// SELALU fetch fresh dari Firestore — TIDAK pakai cache.
+// Ini mencegah cheat via localStorage.
 
 export function onSessionChange(callback) {
   return onAuthStateChanged(auth, async (firebaseUser) => {
@@ -78,11 +67,29 @@ export function onSessionChange(callback) {
       callback(null)
       return
     }
-    const data = await fetchUserDoc(firebaseUser.uid)
-    if (!data) { callback(null); return }
-    const session = buildSession(firebaseUser.uid, data)
-    cacheSession(session)
-    callback(session)
+
+    try {
+      // Force refresh ID token setiap kali — pastikan token valid
+      await firebaseUser.getIdToken(true)
+
+      // Fetch data plan dari Firestore (source of truth)
+      const data = await fetchUserDoc(firebaseUser.uid)
+      if (!data) {
+        cacheSession(null)
+        callback(null)
+        return
+      }
+
+      // Overwrite localStorage dengan data asli dari Firestore
+      const session = buildSession(firebaseUser.uid, data)
+      cacheSession(session)
+      callback(session)
+    } catch (err) {
+      console.error('[auth] onSessionChange error:', err)
+      // Jangan pakai cache kalau fetch gagal — lebih aman logout
+      cacheSession(null)
+      callback(null)
+    }
   })
 }
 
@@ -158,18 +165,17 @@ export async function updateSession(data) {
   if (!session) return null
   const updated = { ...session, ...data }
   cacheSession(updated)
-  // sync subset to Firestore (exclude read-only fields)
   const { userId, ...rest } = updated
   try {
     await updateDoc(doc(db, 'users', userId), rest)
   } catch {
-    // best-effort; local cache already updated
+    // best-effort
   }
   return updated
 }
 
 // ─────────────────────────────────────────────
-// CAN WATCH
+// CAN WATCH  — baca dari session (sudah di-verify Firestore)
 // ─────────────────────────────────────────────
 
 export function canWatch() {
@@ -179,7 +185,6 @@ export function canWatch() {
   if (session.plan === 'premium') {
     if (session.planExpiry && new Date(session.planExpiry) > new Date())
       return { allowed: true, reason: 'premium' }
-    // expired — fall through to free logic
   }
 
   const today   = new Date().toDateString()
@@ -206,37 +211,18 @@ export async function recordWatch() {
 }
 
 // ─────────────────────────────────────────────
-// ACTIVATE PREMIUM  (called after Midtrans success)
+// ACTIVATE PREMIUM
 // ─────────────────────────────────────────────
 
 export async function activatePremium(plan) {
   const expiry = new Date()
   if (plan === 'monthly') expiry.setDate(expiry.getDate() + 30)
   else                    expiry.setDate(expiry.getDate() + 7)
-
   return updateSession({ plan: 'premium', planExpiry: expiry.toISOString() })
 }
 
 // ─────────────────────────────────────────────
-// FIREBASE ERROR → pesan Indonesia
-// ─────────────────────────────────────────────
-
-function firebaseError(code) {
-  const map = {
-    'auth/email-already-in-use':    'Email sudah terdaftar',
-    'auth/invalid-email':           'Format email tidak valid',
-    'auth/weak-password':           'Password terlalu lemah (min 6 karakter)',
-    'auth/user-not-found':          'Email atau password salah',
-    'auth/wrong-password':          'Email atau password salah',
-    'auth/invalid-credential':      'Email atau password salah',
-    'auth/too-many-requests':       'Terlalu banyak percobaan. Coba lagi nanti',
-    'auth/network-request-failed':  'Gangguan jaringan. Periksa koneksi internet',
-  }
-  return map[code] || 'Terjadi kesalahan. Silakan coba lagi'
-}
-
-// ─────────────────────────────────────────────
-// GET FIREBASE ID TOKEN  (untuk Authorization header)
+// GET FIREBASE ID TOKEN
 // ─────────────────────────────────────────────
 
 export async function getIdToken() {
@@ -245,4 +231,22 @@ export async function getIdToken() {
     if (!user) return null
     return await user.getIdToken()
   } catch { return null }
+}
+
+// ─────────────────────────────────────────────
+// FIREBASE ERROR → pesan Indonesia
+// ─────────────────────────────────────────────
+
+function firebaseError(code) {
+  const map = {
+    'auth/email-already-in-use':   'Email sudah terdaftar',
+    'auth/invalid-email':          'Format email tidak valid',
+    'auth/weak-password':          'Password terlalu lemah (min 6 karakter)',
+    'auth/user-not-found':         'Email atau password salah',
+    'auth/wrong-password':         'Email atau password salah',
+    'auth/invalid-credential':     'Email atau password salah',
+    'auth/too-many-requests':      'Terlalu banyak percobaan. Coba lagi nanti',
+    'auth/network-request-failed': 'Gangguan jaringan. Periksa koneksi internet',
+  }
+  return map[code] || 'Terjadi kesalahan. Silakan coba lagi'
 }
