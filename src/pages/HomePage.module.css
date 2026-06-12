@@ -1,0 +1,122 @@
+.hero {
+  position: relative; height: 520px; overflow: hidden;
+}
+.heroSkeleton { height: 520px; border-radius: 0; }
+.heroBackdrop {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center top;
+}
+.heroGradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.2) 30%, rgba(0,0,0,0.7) 65%, rgba(0,0,0,1) 100%);
+}
+.heroDots {
+  display: flex; gap: 6px;
+  position: absolute; bottom: 116px; right: 20px;
+}
+.heroDot {
+  width: 6px; height: 6px; border-radius: 3px;
+  background: rgba(255,255,255,0.3); cursor: pointer;
+  transition: width 0.3s, background 0.3s;
+}
+.heroDotActive { width: 18px; background: var(--text); }
+.heroContent {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 0 20px 28px;
+}
+.heroGenres { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.heroGenreTag {
+  font-size: 11px; font-weight: 600; color: var(--text2);
+  background: var(--surface); border: 0.5px solid var(--border2);
+  border-radius: 20px; padding: 3px 10px; letter-spacing: 0.3px;
+  backdrop-filter: blur(10px);
+}
+.heroTitle {
+  font-size: 34px; font-weight: 700; letter-spacing: -0.8px;
+  line-height: 1.05; margin-bottom: 8px;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+}
+.heroMeta {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 18px; font-size: 13px; color: var(--text2);
+}
+.heroDot2 { width: 3px; height: 3px; background: var(--text3); border-radius: 50%; }
+.heroRating { display: flex; align-items: center; gap: 4px; color: #ffd60a; font-size: 13px; font-weight: 600; }
+.heroActions { display: flex; gap: 10px; }
+
+.btnPlay {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--text); color: #000; border: none;
+  border-radius: var(--radius); padding: 13px 28px;
+  font-family: var(--font); font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btnPlay:hover { opacity: 0.9; }
+.btnPlay:active { transform: scale(0.96); }
+
+.btnList {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); color: var(--text);
+  border: 0.5px solid var(--border2); border-radius: var(--radius);
+  padding: 13px 22px; font-family: var(--font);
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  backdrop-filter: blur(10px); transition: background 0.2s, transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btnList:hover { background: var(--surface3); }
+.btnList:active { transform: scale(0.96); }
+.btnListActive { background: var(--surface3); }
+
+/* ── Sections ── */
+.section { padding: 8px 0 0; }
+.sectionHeader {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; margin-bottom: 12px;
+}
+.sectionTitle { font-size: 19px; font-weight: 700; letter-spacing: -0.3px; }
+
+.scrollRow {
+  display: flex; gap: 12px; padding: 4px 20px 16px;
+  overflow-x: auto; scrollbar-width: none;
+  -ms-overflow-style: none; scroll-snap-type: x mandatory;
+}
+.scrollRow::-webkit-scrollbar { display: none; }
+
+.skeletonPoster { width: 140px; height: 210px; flex: 0 0 140px; }
+.skeletonWide { width: 240px; height: 135px; flex: 0 0 240px; }
+
+/* ── Category Pills ── */
+.cats { display: flex; gap: 8px; padding: 0 20px 16px; overflow-x: auto; scrollbar-width: none; }
+.cats::-webkit-scrollbar { display: none; }
+.catPill {
+  flex: 0 0 auto; padding: 8px 18px; border-radius: 20px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+  background: var(--surface); border: 0.5px solid var(--border2);
+  color: var(--text2); white-space: nowrap;
+}
+.catPillActive { background: var(--accent); border-color: var(--accent); color: #fff; }
+.catPill:active { transform: scale(0.94); }
+
+/* ── Continue Watching card internals ── */
+.movieCard {
+  flex: 0 0 140px; scroll-snap-align: start;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 0.2s;
+}
+.movieCard:active { transform: scale(0.94); }
+.poster {
+  width: 140px; height: 210px; border-radius: var(--radius);
+  overflow: hidden; background: var(--bg3); position: relative;
+  margin-bottom: 8px; border: 0.5px solid var(--border);
+}
+.poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.progressRing { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.15); }
+.progressFill { height: 100%; background: var(--accent); transition: width 0.3s; }
+.pctLabel {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.75); border-radius: 20px; padding: 4px 10px;
+  font-size: 11px; font-weight: 600; backdrop-filter: blur(8px);
+}
+.movieName { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.movieSub { font-size: 11px; color: var(--text3); margin-top: 2px; }

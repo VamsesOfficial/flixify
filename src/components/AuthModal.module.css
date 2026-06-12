@@ -1,0 +1,204 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: background 0.3s ease;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  background: #1c1c1e;
+  border-radius: 20px 20px 0 0;
+  border-top: 0.5px solid rgba(255,255,255,0.1);
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+  transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+
+.handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: #3a3a3c;
+  margin: 12px auto 20px;
+}
+
+.inner {
+  padding: 0 20px;
+}
+
+/* Tabs */
+.tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #2c2c2e;
+  border-radius: 12px;
+  padding: 3px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.tabBtn {
+  position: relative;
+  z-index: 1;
+  padding: 9px 0;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.tabActive {
+  color: #fff;
+}
+
+.tabIndicator {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  bottom: 3px;
+  background: #3a3a3c;
+  border-radius: 10px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Form */
+.formBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input {
+  width: 100%;
+  background: #2c2c2e;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 13px 14px;
+  color: #fff;
+  font-size: 15px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+
+.input::placeholder { color: rgba(255,255,255,0.25); }
+.input:focus { border-color: rgba(229,9,20,0.6); }
+
+.error {
+  background: rgba(229,9,20,0.12);
+  border: 0.5px solid rgba(229,9,20,0.3);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #ff6b6b;
+  line-height: 1.4;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 15px;
+  border-radius: 14px;
+  background: #e50914;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 4px;
+  transition: opacity 0.2s, transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.submitBtn:hover { opacity: 0.9; }
+.submitBtn:active { transform: scale(0.98); }
+.submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.switchText {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.45);
+  padding-bottom: 4px;
+}
+
+.switchLink {
+  background: none;
+  border: none;
+  color: #e50914;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+/* ── Password field ── */
+.passWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.inputPass { padding-right: 44px; }
+.eyeBtn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.eyeBtn:hover { opacity: 1; }
+
+/* ── Loading spinner ── */
+.spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2.5px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Forgot password ── */
+.forgotBtn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  font-size: 13px;
+  cursor: not-allowed;
+  font-family: inherit;
+  text-align: center;
+  margin-top: -6px;
+}
