@@ -4,9 +4,7 @@ import styles from './ProfilePage.module.css'
 const TECH_STACK = ['React', 'Vite', 'TMDB API', 'CSS Modules']
 
 const SUPPORT_LINKS = [
-  { name: 'Saweria', emoji: '💛', url: 'https://saweria.co/USERNAME', color: '#f9c22e' },
-  { name: 'Trakteer', emoji: '☕', url: 'https://trakteer.id/USERNAME', color: '#e50914' },
-  { name: 'Ko-fi', emoji: '💙', url: 'https://ko-fi.com/USERNAME', color: '#29abe0' },
+  { name: 'Saweria', emoji: '🐣', url: 'https://saweria.co/vamsesofficial', color: '#f9c22e' },
 ]
 
 function formatExpiry(iso) {
@@ -229,7 +227,13 @@ export default function ProfilePage({ user, onShowToast, onTabChange, onLoginCli
           <div className={styles.creatorSection}>
             <div className={styles.creatorLabel}>PEMBUAT</div>
             <div className={styles.creatorRow}>
-              <div className={styles.creatorAvatar}>D</div>
+              <div className={styles.creatorAvatar}>
+                <img 
+                    src="/developer.png" 
+                    alt="Creator Avatar"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                </div>
               <div className={styles.creatorDetails}>
                 <div className={styles.creatorName}>Dev Flixify</div>
                 <div className={styles.creatorRole}>Frontend Developer</div>
@@ -246,6 +250,21 @@ export default function ProfilePage({ user, onShowToast, onTabChange, onLoginCli
                   <span key={t} className={styles.stackTag}>{t}</span>
                 ))}
               </div>
+            </div>
+            <div className={styles.socialRow}>
+              <a
+                href="https://instagram.com/ketutaguss_"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.socialBtn}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                  <circle cx="12" cy="12" r="4"/>
+                  <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+                </svg>
+                @ketutaguss_
+              </a>
             </div>
             <div className={styles.visionBox}>
               <div className={styles.visionIcon}>🎯</div>
