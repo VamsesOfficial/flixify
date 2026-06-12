@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getSession, activatePremium, getIdToken } from '../lib/auth'
+import { getSession, getIdToken, syncSessionFromFirestore } from '../lib/auth'
 import styles from './PremiumModal.module.css'
 
 const BENEFITS = [
@@ -63,11 +63,13 @@ export default function PremiumModal({ visible, onClose, onSuccess }) {
       // ── Open Midtrans Snap popup ─────────────────────────
       window.snap.pay(data.token, {
         onSuccess: async () => {
-          // Webhook will update Firestore; we also update local session
-          await activatePremium(plan)
+          // Webhook sudah update Firestore via Firebase Admin SDK (server-side).
+          // Kita cukup re-fetch session dari Firestore untuk update local cache.
+          // TIDAK memanggil activatePremium() dari client.
+          const updated = await syncSessionFromFirestore()
           setLoading(null)
           close()
-          setTimeout(() => onSuccess(), 350)
+          setTimeout(() => onSuccess(updated), 350)
         },
         onPending: () => {
           setLoading(null)
