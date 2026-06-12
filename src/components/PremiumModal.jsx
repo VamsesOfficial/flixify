@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getSession, activatePremium } from '../lib/auth'
+import { getSession, activatePremium, getIdToken } from '../lib/auth'
 import styles from './PremiumModal.module.css'
 
 const BENEFITS = [
@@ -39,15 +39,21 @@ export default function PremiumModal({ visible, onClose, onSuccess }) {
       // ── Load Midtrans Snap script once ──────────────────
       await loadSnapScript()
 
+      // ── Get Firebase ID token for auth ──────────────────
+      const idToken = await getIdToken()
+      if (!idToken) throw new Error('Sesi tidak valid. Silakan login ulang.')
+
       // ── Request token from our Vercel API ───────────────
       const res = await fetch('/api/create-payment', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
           plan,
-          userId: session?.userId || 'guest',
-          email:  session?.email  || '',
-          name:   session?.name   || 'User',
+          name:  session?.name  || 'User',
+          email: session?.email || '',
         }),
       })
 

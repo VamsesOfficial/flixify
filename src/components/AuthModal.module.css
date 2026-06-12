@@ -202,3 +202,10 @@
   text-align: center;
   margin-top: -6px;
 }
+
+/* ── Turnstile widget ── */
+.turnstileWrap {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0;
+}

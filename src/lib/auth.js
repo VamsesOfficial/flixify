@@ -234,3 +234,15 @@ function firebaseError(code) {
   }
   return map[code] || 'Terjadi kesalahan. Silakan coba lagi'
 }
+
+// ─────────────────────────────────────────────
+// GET FIREBASE ID TOKEN  (untuk Authorization header)
+// ─────────────────────────────────────────────
+
+export async function getIdToken() {
+  try {
+    const user = auth.currentUser
+    if (!user) return null
+    return await user.getIdToken()
+  } catch { return null }
+}
