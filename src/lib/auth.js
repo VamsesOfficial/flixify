@@ -1,8 +1,11 @@
 /**
  * auth.js — Production Firebase Auth + Firestore
  *
- * Fix: onSessionChange selalu re-fetch Firestore (bukan dari cache)
- * sehingga localStorage yang di-cheat akan selalu ditimpa data asli.
+ * SECURITY FIXES:
+ * 1. updateSession() tidak lagi bisa mengubah field plan/planExpiry dari client
+ * 2. activatePremium() dihapus dari client — premium HANYA bisa diaktifkan
+ *    oleh server (payment-webhook.js via Firebase Admin SDK)
+ * 3. onSessionChange selalu re-fetch Firestore (bukan dari cache)
  */
 
 import {
@@ -25,6 +28,9 @@ import { auth, db } from './firebase'
 // ─────────────────────────────────────────────
 
 const SESSION_KEY = 'flixify_session_v2'
+
+// Field sensitif yang TIDAK BOLEH diubah dari client
+const PROTECTED_FIELDS = ['plan', 'planExpiry', 'userId', 'uid', 'email']
 
 function cacheSession(data) {
   if (data) localStorage.setItem(SESSION_KEY, JSON.stringify(data))
@@ -158,20 +164,53 @@ export async function logout() {
 
 // ─────────────────────────────────────────────
 // UPDATE SESSION (local cache + Firestore)
+// HANYA untuk field NON-SENSITIF seperti watchedToday, lastWatchedDate, name
+// Field plan dan planExpiry TIDAK BISA diubah dari sini
 // ─────────────────────────────────────────────
 
 export async function updateSession(data) {
   const session = getSession()
   if (!session) return null
-  const updated = { ...session, ...data }
+
+  // Buang semua field sensitif — tidak boleh diubah dari client
+  const safeData = Object.fromEntries(
+    Object.entries(data).filter(([key]) => !PROTECTED_FIELDS.includes(key))
+  )
+
+  const updated = { ...session, ...safeData }
   cacheSession(updated)
-  const { userId, ...rest } = updated
+
+  const { userId } = updated
   try {
-    await updateDoc(doc(db, 'users', userId), rest)
+    await updateDoc(doc(db, 'users', userId), safeData)
   } catch {
     // best-effort
   }
   return updated
+}
+
+// ─────────────────────────────────────────────
+// SYNC SESSION FROM FIRESTORE
+// Paksa re-fetch dari Firestore dan update local cache
+// Panggil setelah webhook konfirmasi pembayaran berhasil
+// ─────────────────────────────────────────────
+
+export async function syncSessionFromFirestore() {
+  const currentUser = auth.currentUser
+  if (!currentUser) return null
+
+  try {
+    await currentUser.getIdToken(true)
+    const data = await fetchUserDoc(currentUser.uid)
+    if (!data) return null
+
+    const session = buildSession(currentUser.uid, data)
+    cacheSession(session)
+    return session
+  } catch (err) {
+    console.error('[auth] syncSessionFromFirestore error:', err)
+    return null
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -208,17 +247,6 @@ export async function recordWatch() {
     ? (session.watchedToday || 0) + 1
     : 1
   await updateSession({ watchedToday: watched, lastWatchedDate: today })
-}
-
-// ─────────────────────────────────────────────
-// ACTIVATE PREMIUM
-// ─────────────────────────────────────────────
-
-export async function activatePremium(plan) {
-  const expiry = new Date()
-  if (plan === 'monthly') expiry.setDate(expiry.getDate() + 30)
-  else                    expiry.setDate(expiry.getDate() + 7)
-  return updateSession({ plan: 'premium', planExpiry: expiry.toISOString() })
 }
 
 // ─────────────────────────────────────────────
