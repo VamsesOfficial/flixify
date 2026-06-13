@@ -18,11 +18,36 @@ import {
   getSession,
   onSessionChange,
   logout,
-  canWatch,
   recordWatch,
+  getIdToken,
 } from './lib/auth'
 import { syncFromCloud } from './lib/storage'
 import styles from './App.module.css'
+
+// ─────────────────────────────────────────────────────────────
+// Verifikasi plan ke server — tidak percaya localStorage/canWatch()
+// Endpoint /api/verify-plan baca langsung dari Firestore via Admin SDK
+// ─────────────────────────────────────────────────────────────
+async function verifyPlanFromServer() {
+  try {
+    const idToken = await getIdToken()
+    if (!idToken) return { allowed: false, reason: 'guest' }
+
+    const res = await fetch('/api/verify-plan', {
+      headers: { 'Authorization': `Bearer ${idToken}` },
+    })
+
+    if (!res.ok) {
+      console.warn('[verifyPlan] server error:', res.status)
+      return { allowed: false, reason: 'error' }
+    }
+
+    return await res.json()
+  } catch (err) {
+    console.error('[verifyPlan] fetch error:', err)
+    return { allowed: false, reason: 'error' }
+  }
+}
 
 export default function App() {
   const [activeTab,    setActiveTab]    = useState('home')
@@ -32,6 +57,7 @@ export default function App() {
   const [showAuth,     setShowAuth]     = useState(false)
   const [showPremium,  setShowPremium]  = useState(false)
   const [authReady,    setAuthReady]    = useState(false)
+  const [verifying,    setVerifying]    = useState(false)
 
   const { watchlist, toggle: toggleWatchlist, remove: removeWatchlist, isInList, reload: reloadWatchlist } = useWatchlist()
   const { progress, update: updateProgress, reload: reloadProgress } = useProgress()
@@ -44,7 +70,6 @@ export default function App() {
       setUser(session)
       setAuthReady(true)
       if (session) {
-        // Pull cloud data into localStorage, then refresh hook states
         await syncFromCloud()
         reloadWatchlist?.()
         reloadHistory?.()
@@ -76,20 +101,39 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
-  // ── Play handler ─────────────────────────────────────────
+  // ── Play handler — verifikasi ke server sebelum buka player ──
+  // canWatch() lama cuma baca localStorage — bisa dicheat.
+  // Sekarang kita tanya server dulu via /api/verify-plan.
   const handlePlay = useCallback(async (media) => {
-    const { allowed, reason } = canWatch()
-    if (reason === 'guest') { setShowAuth(true); return }
-    if (!allowed && reason === 'limit') {
-      setShowPremium(true)
-      showToast('Batas nonton harian tercapai. Upgrade Premium!')
-      return
+    const session = getSession()
+    if (!session) { setShowAuth(true); return }
+
+    setVerifying(true)
+    try {
+      const { allowed, reason } = await verifyPlanFromServer()
+
+      if (reason === 'guest') { setShowAuth(true); return }
+
+      if (!allowed && reason === 'limit') {
+        setShowPremium(true)
+        showToast('Batas nonton harian tercapai. Upgrade Premium!')
+        return
+      }
+
+      if (reason === 'error') {
+        showToast('Gagal memverifikasi akses. Coba lagi.')
+        return
+      }
+
+      // Allowed — catat nonton dan buka player
+      await recordWatch()
+      setUser(getSession())
+      const m = { ...media, season: media.season || 1, episode: media.episode || 1 }
+      setCurrentMedia(m)
+      addHistory(m)
+    } finally {
+      setVerifying(false)
     }
-    await recordWatch()
-    setUser(getSession())
-    const m = { ...media, season: media.season || 1, episode: media.episode || 1 }
-    setCurrentMedia(m)
-    addHistory(m)
   }, [addHistory, showToast])
 
   // ── Watchlist ─────────────────────────────────────────────
@@ -211,12 +255,39 @@ export default function App() {
       <PremiumModal
         visible={showPremium}
         onClose={() => setShowPremium(false)}
-        onSuccess={() => {
-          setUser(getSession())
+        onSuccess={(session) => {
+          if (session) setUser(session)
           setShowPremium(false)
           showToast('Premium aktif! Nikmati nonton tanpa batas ✨')
         }}
       />
+
+      {/* Verifying overlay — muncul saat cek plan ke server */}
+      {verifying && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9998,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.55)',
+        }}>
+          <div style={{
+            background: '#1c1c1e', borderRadius: 16, padding: '20px 28px',
+            color: '#fff', fontSize: 15, fontWeight: 500,
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <span style={{
+              width: 18, height: 18,
+              border: '2px solid #ffffff30',
+              borderTopColor: '#fff',
+              borderRadius: '50%',
+              animation: 'spin 0.7s linear infinite',
+              display: 'inline-block', flexShrink: 0,
+            }} />
+            Memeriksa akses...
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       <Toast msg={toast.msg} visible={toast.visible} />
     </>
@@ -238,14 +309,6 @@ function SplashScreen() {
       }}>
         <span style={{ color: '#e50914' }}>Flix</span>ify
       </div>
-      <div style={{
-        width: 36, height: 36,
-        border: '3px solid rgba(255,255,255,0.15)',
-        borderTopColor: '#e50914',
-        borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
-      }} />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
