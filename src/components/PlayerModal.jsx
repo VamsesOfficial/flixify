@@ -237,10 +237,13 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
           <iframe
             key={iframeKey}
             src={open ? src : ''}
-            allow="autoplay; fullscreen; picture-in-picture"
-            allowFullScreen
+            allow="autoplay; fullscreen *; picture-in-picture; encrypted-media"
+            allowFullScreen={true}
+            webkitAllowFullScreen={true}
+            mozAllowFullScreen={true}
             referrerPolicy="no-referrer"
             title={title}
+            style={{ border: 'none' }}
           />
         </div>
 
