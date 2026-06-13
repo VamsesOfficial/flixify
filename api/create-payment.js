@@ -54,7 +54,8 @@ export default async function handler(req, res) {
   if (!amount) return res.status(400).json({ error: 'Invalid plan' })
 
   // ── 3. Build Midtrans request ──────────────────────────────
-  const orderId   = `FLIXIFY-${plan.toUpperCase()}-${tokenData.uid}-${Date.now()}`
+  // Midtrans order_id max length is 50 chars — keep it short but unique.
+  const orderId   = `FLX-${plan === 'monthly' ? 'M' : 'W'}-${tokenData.uid.slice(0, 12)}-${Date.now().toString(36)}`
   const serverKey = process.env.MIDTRANS_SERVER_KEY
   const isProd    = process.env.MIDTRANS_IS_PRODUCTION === 'true'
   const baseUrl   = isProd
