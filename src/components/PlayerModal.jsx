@@ -3,9 +3,11 @@ import { tmdb, peachifyUrl } from '../lib/tmdb'
 import styles from './PlayerModal.module.css'
 
 const PLAYERS = [
-  { id: 'primary', label: 'Primary' },
-  { id: 'vsembed', label: 'VidSrc' },
-  { id: 'videasy', label: 'Videasy' },
+  { id: 'primary',    label: 'Primary',    note: 'Player utama — konten paling lengkap' },
+  { id: 'vsembed',   label: 'VidSrc',     note: 'VidSrc — stabil, minim iklan' },
+  { id: 'videasy',   label: 'Videasy',    note: 'Videasy — kualitas HD, subtitle lengkap' },
+  { id: 'autoembed', label: 'AutoEmbed',  note: 'AutoEmbed — multi-server, fallback otomatis' },
+  { id: 'multiembed',label: 'MultiEmbed', note: 'MultiEmbed — 10+ server, konten lengkap' },
 ]
 
 const VIDSRC_DOMAIN = 'vidsrc-embed.ru'
@@ -15,14 +17,27 @@ const adWarningShown = { current: false }
 
 function buildPlayerUrl(playerId, id, type, season, episode, progress) {
   if (playerId === 'primary') return peachifyUrl(id, type, season, episode, progress)
+
   if (playerId === 'vsembed') {
     if (type === 'movie') return `https://${VIDSRC_DOMAIN}/embed/movie/${id}`
     return `https://${VIDSRC_DOMAIN}/embed/tv/${id}/${season}/${episode}`
   }
+
   if (playerId === 'videasy') {
     if (type === 'movie') return `https://player.videasy.net/movie/${id}?color=FFA500`
     return `https://player.videasy.net/tv/${id}/${season}/${episode}?color=FFA500`
   }
+
+  if (playerId === 'autoembed') {
+    if (type === 'movie') return `https://autoembed.cc/embed/movie/${id}`
+    return `https://autoembed.cc/embed/tv/${id}-${season}-${episode}`
+  }
+
+  if (playerId === 'multiembed') {
+    if (type === 'movie') return `https://multiembed.mov/?video_id=${id}&tmdb=1`
+    return `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
+  }
+
   return peachifyUrl(id, type, season, episode, progress)
 }
 
@@ -83,7 +98,7 @@ function AdWarningSheet({ onDismiss }) {
   const tips = [
     { bg: 'rgba(255,159,10,0.18)', color: '#ff9f0a', icon: '✕', title: 'Tutup tab iklan', desc: 'Tab baru terbuka? Tutup aja, lalu balik ke Flixify — film tetap jalan.' },
     { bg: 'rgba(55,138,221,0.18)', color: '#5eb0f5', icon: '🛡', title: 'Aktifkan popup blocker', desc: 'Chrome: Setelan → Privasi → Izin Situs → Pop-up → Blokir semua.' },
-    { bg: 'rgba(99,153,34,0.18)', color: '#7ac231', icon: '▶', title: 'Coba player lain', desc: 'Pakai tombol VidSrc atau Videasy kalau Primary terlalu agresif.' },
+    { bg: 'rgba(99,153,34,0.18)', color: '#7ac231', icon: '▶', title: 'Coba player lain', desc: 'Ada 5 pilihan player — kalau Primary redirect, coba VidSrc, Videasy, AutoEmbed, atau MultiEmbed.' },
   ]
 
   return (
@@ -126,13 +141,11 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
   const [iframeKey, setIframeKey] = useState(0)
   const [showAdWarning, setShowAdWarning] = useState(false)
 
-  // Freeze progress saat modal dibuka — cegah src recompute tiap MEDIA_DATA event
   const frozenProgress = useRef({})
 
   const open = !!media
   const type = media?.media_type === 'tv' ? 'tv' : 'movie'
 
-  // src hanya recompute saat iframeKey naik (ganti player/episode) — bukan tiap progress update
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const src = useMemo(() => open ? buildPlayerUrl(activePlayer, media.id, type, currentSeason, currentEpisode, frozenProgress.current) : '', [iframeKey, open, activePlayer, media?.id, type, currentSeason, currentEpisode])
 
@@ -195,8 +208,10 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
   const switchPlayer = (id) => {
     setActivePlayer(id)
     setIframeKey(k => k + 1)
-    onShowToast(`Beralih ke player ${PLAYERS.find(p => p.id === id)?.label}`)
+    onShowToast(`Beralih ke ${PLAYERS.find(p => p.id === id)?.label}`)
   }
+
+  const activePlayerNote = PLAYERS.find(p => p.id === activePlayer)?.note || ''
 
   return (
     <>
@@ -224,7 +239,6 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
             src={open ? src : ''}
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
-            //sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-top-navigation-by-user-activation"
             referrerPolicy="no-referrer"
             title={title}
           />
@@ -245,18 +259,12 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
                 className={`${styles.playerBtn} ${activePlayer === p.id ? styles.playerBtnActive : ''}`}
                 onClick={() => switchPlayer(p.id)}
               >
-                {activePlayer === p.id && (
-                  <span className={styles.playerDot} />
-                )}
+                {activePlayer === p.id && <span className={styles.playerDot} />}
                 {p.label}
               </button>
             ))}
           </div>
-          <div className={styles.playerNote}>
-            {activePlayer === 'primary' && 'Player utama — kualitas terbaik'}
-            {activePlayer === 'vsembed' && 'VidSrc — backup player 1 (vidsrc-embed.ru)'}
-            {activePlayer === 'videasy' && 'Videasy — backup player 2'}
-          </div>
+          <div className={styles.playerNote}>{activePlayerNote}</div>
         </div>
 
         {/* Info section */}
