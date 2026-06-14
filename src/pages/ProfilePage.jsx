@@ -279,6 +279,32 @@ export default function ProfilePage({ user, onShowToast, onTabChange, onLoginCli
           </div>
         </div>
 
+        {/* ── Sponsor ── */}
+        <div className={styles.sectionLabel}>SPONSOR</div>
+        <a
+          href="https://termai.cc"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={styles.sponsorCard}
+        >
+          <div className={styles.sponsorGlow} />
+          <div className={styles.sponsorContent}>
+            <div className={styles.sponsorLeft}>
+              <img
+                src="https://c.termai.cc/i121/8Fafjz.png"
+                alt="Termai Icon"
+                className={styles.sponsorIcon}
+              />
+              <div className={styles.sponsorText}>
+                <div className={styles.sponsorLabel}>Didukung oleh</div>
+                <div className={styles.sponsorName}>Termai.cc</div>
+                <div className={styles.sponsorDesc}>API · Cloud · Store Bot</div>
+              </div>
+            </div>
+            <div className={styles.sponsorArrow}>›</div>
+          </div>
+        </a>
+
         {/* ── Footer ── */}
         <div className={styles.footer}>
           <div className={styles.footerLogo}>
@@ -287,6 +313,12 @@ export default function ProfilePage({ user, onShowToast, onTabChange, onLoginCli
           <div className={styles.footerTagline}>Made with ❤️ by Dev Flixify</div>
           <div className={styles.footerCopy}>© 2026 Flixify · v1.0</div>
           <div className={styles.footerPowered}>Powered by TMDB &amp; Peachify</div>
+          <div className={styles.footerSponsor}>
+            Sponsored by{' '}
+            <a href="https://termai.cc" target="_blank" rel="noopener noreferrer" className={styles.footerSponsorLink}>
+              termai.cc
+            </a>
+          </div>
         </div>
 
       </div>

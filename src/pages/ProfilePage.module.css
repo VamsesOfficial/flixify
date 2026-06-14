@@ -668,3 +668,84 @@
   font-size: 13px;
   color: rgba(255,255,255,0.65);
 }
+
+/* ── Sponsor Card ── */
+.sponsorCard {
+  display: block;
+  position: relative;
+  background: linear-gradient(135deg, rgba(108,58,255,0.12), rgba(60,20,180,0.08));
+  border: 1px solid rgba(108,58,255,0.35);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s;
+  margin-bottom: 8px;
+}
+.sponsorCard:active { transform: scale(0.98); }
+.sponsorGlow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at top left, rgba(108,58,255,0.18), transparent 70%);
+  pointer-events: none;
+}
+.sponsorContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+.sponsorLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.sponsorIcon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.sponsorText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sponsorLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  color: rgba(168,130,255,0.75);
+  text-transform: uppercase;
+}
+.sponsorName {
+  font-size: 16px;
+  font-weight: 800;
+  color: #c4a8ff;
+  letter-spacing: -0.3px;
+}
+.sponsorDesc {
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  margin-top: 1px;
+}
+.sponsorArrow {
+  font-size: 22px;
+  color: rgba(168,130,255,0.6);
+  font-weight: 300;
+  line-height: 1;
+}
+
+/* ── Footer Sponsor ── */
+.footerSponsor {
+  font-size: 11px;
+  color: rgba(255,255,255,0.25);
+  margin-top: 4px;
+}
+.footerSponsorLink {
+  color: rgba(168,130,255,0.6);
+  text-decoration: none;
+}
+.footerSponsorLink:hover { color: rgba(168,130,255,0.9); }
