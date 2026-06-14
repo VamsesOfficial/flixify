@@ -186,7 +186,81 @@ function AdWarningSheet({ onDismiss }) {
   )
 }
 
-export default function PlayerModal({ media, onClose, isInList, onToggleWatchlist, onShowToast, progress }) {
+function SubtitleHelp() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <button
+        className={styles.subtitleHelpToggle}
+        onClick={() => setOpen(o => !o)}
+        type="button"
+      >
+        <span className={styles.subtitleHelpIcon}>💬</span>
+        <span>Tidak ada subtitle Indonesia? Download &amp; upload subtitle</span>
+        <svg
+          className={`${styles.subtitleHelpChevron} ${open ? styles.subtitleHelpChevronOpen : ''}`}
+          width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className={styles.subtitleHelpPanel}>
+          <div className={styles.subtitleStep}>
+            <div className={styles.subtitleStepNum}>1</div>
+            <div className={styles.subtitleStepText}>
+              Cari subtitle <strong>Bahasa Indonesia</strong> untuk film/episode ini di situs subtitle. Pastikan judul & tahun rilisnya sama persis.
+            </div>
+          </div>
+          <div className={styles.subtitleLinks}>
+            <a className={styles.subtitleLink} href="https://subdl.com" target="_blank" rel="noopener noreferrer">Subdl ↗</a>
+            <a className={styles.subtitleLink} href="https://www.opensubtitles.org" target="_blank" rel="noopener noreferrer">OpenSubtitles ↗</a>
+            <a className={styles.subtitleLink} href="https://www.podnapisi.net" target="_blank" rel="noopener noreferrer">Podnapisi ↗</a>
+          </div>
+
+          <div className={styles.subtitleStep}>
+            <div className={styles.subtitleStepNum}>2</div>
+            <div className={styles.subtitleStepText}>
+              Download file subtitle-nya (biasanya format <strong>.srt</strong>). Kalau berbentuk .zip, extract dulu.
+            </div>
+          </div>
+
+          <div className={styles.subtitleStep}>
+            <div className={styles.subtitleStepNum}>3</div>
+            <div className={styles.subtitleStepText}>
+              Di video player di atas, klik ikon <strong>⚙️ Settings</strong> atau <strong>CC / Subtitle</strong> — biasanya ada di pojok kanan bawah video.
+            </div>
+          </div>
+
+          <div className={styles.subtitleStep}>
+            <div className={styles.subtitleStepNum}>4</div>
+            <div className={styles.subtitleStepText}>
+              Pilih menu <strong>"Add Subtitle" / "Upload" / "Custom Subtitle"</strong>, lalu pilih file .srt yang sudah didownload.
+            </div>
+          </div>
+
+          <div className={styles.subtitleStep}>
+            <div className={styles.subtitleStepNum}>5</div>
+            <div className={styles.subtitleStepText}>
+              Subtitle Indonesia langsung muncul di video. Kalau timing-nya geser, biasanya ada opsi <strong>sync / offset (+/-)</strong> di menu yang sama.
+            </div>
+          </div>
+
+          <div className={styles.subtitleStep} style={{ paddingTop: 10 }}>
+            <div className={styles.subtitleStepText} style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
+              💡 Tampilan menu subtitle beda-beda tiap player — kalau di player aktif gak ketemu, coba beralih ke <strong>Videasy</strong> atau <strong>VidSrc</strong>, kedua player itu paling lengkap fitur upload subtitle-nya.
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+
   const [details, setDetails] = useState(null)
   const [currentSeason, setCurrentSeason] = useState(1)
   const [currentEpisode, setCurrentEpisode] = useState(1)
@@ -322,6 +396,7 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
             ))}
           </div>
           <div className={styles.playerNote}>{activePlayerNote}</div>
+          <SubtitleHelp />
         </div>
 
         {/* Info section */}
