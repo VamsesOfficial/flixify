@@ -260,7 +260,7 @@ function SubtitleHelp() {
   )
 }
 
-
+export default function PlayerModal({ media, onClose, isInList, onToggleWatchlist, onShowToast, progress }) {
   const [details, setDetails] = useState(null)
   const [currentSeason, setCurrentSeason] = useState(1)
   const [currentEpisode, setCurrentEpisode] = useState(1)
