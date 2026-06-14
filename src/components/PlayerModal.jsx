@@ -81,8 +81,15 @@ function AdWarningSheet({ onDismiss }) {
     title: { fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.2, marginBottom: 10 },
     sub: { fontSize: 14, color: '#8e8e93', lineHeight: 1.65, marginBottom: 18 },
     tips: { background: '#2c2c2e', borderRadius: 14, marginBottom: 18, overflow: 'hidden' },
-    tip: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px', borderBottom: '0.5px solid #3a3a3c' },
-    tipLast: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px' },
+    tip: (clickable) => ({
+      display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px',
+      borderBottom: '0.5px solid #3a3a3c',
+      background: clickable ? 'rgba(255,255,255,0.04)' : 'transparent',
+    }),
+    tipLast: (clickable) => ({
+      display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 14px',
+      background: clickable ? 'rgba(255,255,255,0.04)' : 'transparent',
+    }),
     iconWrap: (bg, color) => ({
       width: 32, height: 32, borderRadius: 8, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -91,7 +98,11 @@ function AdWarningSheet({ onDismiss }) {
     tipTitle: { fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 2 },
     tipDesc: { fontSize: 12, color: '#8e8e93', lineHeight: 1.5 },
     tipLink: { display: 'flex', alignItems: 'flex-start', gap: 12, width: '100%', textDecoration: 'none', color: 'inherit' },
-    tipArrow: { color: '#48484a', fontSize: 16, alignSelf: 'center', marginLeft: 'auto', flexShrink: 0 },
+    tipArrow: (color, bg) => ({
+      width: 26, height: 26, borderRadius: 13, flexShrink: 0, alignSelf: 'center',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: bg, color: color, fontSize: 13, marginLeft: 'auto',
+    }),
     cta: {
       width: '100%', padding: 15, borderRadius: 14,
       background: '#ff9f0a', border: 'none', color: '#000',
@@ -154,11 +165,12 @@ function AdWarningSheet({ onDismiss }) {
                     <div style={S.tipTitle}>{t.title}</div>
                     <div style={S.tipDesc}>{t.desc}</div>
                   </div>
-                  {t.link && <div style={S.tipArrow}>↗</div>}
+                  {t.link && <div style={S.tipArrow(t.color, t.bg)}>↗</div>}
                 </>
               )
+              const rowStyle = i < tips.length - 1 ? S.tip(!!t.link) : S.tipLast(!!t.link)
               return (
-                <div key={i} style={i < tips.length - 1 ? S.tip : S.tipLast}>
+                <div key={i} style={rowStyle}>
                   {t.link
                     ? <a href={t.link} target="_blank" rel="noopener noreferrer" style={S.tipLink}>{content}</a>
                     : content}
