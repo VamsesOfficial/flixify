@@ -41,9 +41,17 @@ function buildPlayerUrl(playerId, id, type, season, episode, progress) {
   return peachifyUrl(id, type, season, episode, progress)
 }
 
+function detectPlatform() {
+  const ua = navigator.userAgent || navigator.vendor || ''
+  if (/android/i.test(ua)) return 'android'
+  if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios'
+  return 'other'
+}
+
 function AdWarningSheet({ onDismiss }) {
   const [visible, setVisible] = useState(false)
   useEffect(() => { const id = requestAnimationFrame(() => setVisible(true)); return () => cancelAnimationFrame(id) }, [])
+  const platform = useMemo(() => detectPlatform(), [])
 
   const dismiss = () => { setVisible(false); setTimeout(onDismiss, 320) }
 
@@ -82,6 +90,8 @@ function AdWarningSheet({ onDismiss }) {
     }),
     tipTitle: { fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 2 },
     tipDesc: { fontSize: 12, color: '#8e8e93', lineHeight: 1.5 },
+    tipLink: { display: 'flex', alignItems: 'flex-start', gap: 12, width: '100%', textDecoration: 'none', color: 'inherit' },
+    tipArrow: { color: '#48484a', fontSize: 16, alignSelf: 'center', marginLeft: 'auto', flexShrink: 0 },
     cta: {
       width: '100%', padding: 15, borderRadius: 14,
       background: '#ff9f0a', border: 'none', color: '#000',
@@ -95,11 +105,33 @@ function AdWarningSheet({ onDismiss }) {
     },
   }
 
-  const tips = [
-    { bg: 'rgba(255,159,10,0.18)', color: '#ff9f0a', icon: '✕', title: 'Tutup tab iklan', desc: 'Tab baru terbuka? Tutup aja, lalu balik ke Flixify — film tetap jalan.' },
-    { bg: 'rgba(55,138,221,0.18)', color: '#5eb0f5', icon: '🛡', title: 'Aktifkan popup blocker', desc: 'Chrome: Setelan → Privasi → Izin Situs → Pop-up → Blokir semua.' },
-    { bg: 'rgba(99,153,34,0.18)', color: '#7ac231', icon: '▶', title: 'Coba player lain', desc: 'Ada 5 pilihan player — kalau Primary redirect, coba VidSrc, Videasy, AutoEmbed, atau MultiEmbed.' },
-  ]
+  const tips = []
+
+  if (platform === 'ios') {
+    tips.push({
+      bg: 'rgba(55,138,221,0.18)', color: '#5eb0f5', icon: '🛡',
+      title: 'Pasang AdGuard for Safari',
+      desc: 'Install gratis dari App Store, lalu aktifkan di Settings → Safari → Extensions. Popup & redirect iklan otomatis keblokir.',
+      link: 'https://apps.apple.com/app/adguard-for-safari/id1440147259',
+    })
+  } else if (platform === 'android') {
+    tips.push({
+      bg: 'rgba(55,138,221,0.18)', color: '#5eb0f5', icon: '🦁',
+      title: 'Buka di Brave Browser',
+      desc: 'Browser dengan adblock built-in, install gratis dari Play Store — popup & redirect iklan langsung keblokir, gak perlu setting apa-apa.',
+      link: 'https://play.google.com/store/apps/details?id=com.brave.browser',
+    })
+  } else {
+    tips.push({
+      bg: 'rgba(55,138,221,0.18)', color: '#5eb0f5', icon: '🦁',
+      title: 'Pakai browser dengan adblock built-in',
+      desc: 'Brave Browser otomatis blokir popup & redirect iklan tanpa setting tambahan.',
+      link: 'https://brave.com/download/',
+    })
+  }
+
+  tips.push({ bg: 'rgba(255,159,10,0.18)', color: '#ff9f0a', icon: '✕', title: 'Tutup tab iklan', desc: 'Tab baru terbuka? Tutup aja, lalu balik ke Flixify — film tetap jalan.' })
+  tips.push({ bg: 'rgba(99,153,34,0.18)', color: '#7ac231', icon: '▶', title: 'Coba player lain', desc: 'Ada 5 pilihan player — kalau Primary redirect, coba VidSrc, Videasy, AutoEmbed, atau MultiEmbed.' })
 
   return (
     <div style={S.backdrop} onClick={dismiss}>
@@ -107,22 +139,32 @@ function AdWarningSheet({ onDismiss }) {
         <div style={S.handle} />
         <div style={S.inner}>
           <div style={S.badge}>⚠️ Sebelum nonton</div>
-          <div style={S.title}>Waspada iklan<br />tab baru 🛡️</div>
+          <div style={S.title}>Waspada iklan<br />& redirect 🛡️</div>
           <div style={S.sub}>
             Player film yang dipakai Flixify berasal dari pihak ketiga —
-            kadang membuka <strong style={{ color: '#d1d1d6', fontWeight: 500 }}>tab baru otomatis</strong> saat kamu klik video.
+            kadang muncul <strong style={{ color: '#d1d1d6', fontWeight: 500 }}>tab baru atau redirect otomatis</strong> saat kamu klik video.
             Itu iklan, bukan error atau virus.
           </div>
           <div style={S.tips}>
-            {tips.map((t, i) => (
-              <div key={i} style={i < tips.length - 1 ? S.tip : S.tipLast}>
-                <div style={S.iconWrap(t.bg, t.color)}>{t.icon}</div>
-                <div>
-                  <div style={S.tipTitle}>{t.title}</div>
-                  <div style={S.tipDesc}>{t.desc}</div>
+            {tips.map((t, i) => {
+              const content = (
+                <>
+                  <div style={S.iconWrap(t.bg, t.color)}>{t.icon}</div>
+                  <div>
+                    <div style={S.tipTitle}>{t.title}</div>
+                    <div style={S.tipDesc}>{t.desc}</div>
+                  </div>
+                  {t.link && <div style={S.tipArrow}>↗</div>}
+                </>
+              )
+              return (
+                <div key={i} style={i < tips.length - 1 ? S.tip : S.tipLast}>
+                  {t.link
+                    ? <a href={t.link} target="_blank" rel="noopener noreferrer" style={S.tipLink}>{content}</a>
+                    : content}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <button style={S.cta} onClick={dismiss}>Siap, Nonton Sekarang</button>
           <button style={S.skip} onClick={dismiss}>Jangan tampilkan lagi</button>
