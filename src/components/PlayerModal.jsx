@@ -186,8 +186,12 @@ function AdWarningSheet({ onDismiss }) {
   )
 }
 
-function SubtitleHelp() {
+function SubtitleHelp({ title }) {
   const [open, setOpen] = useState(false)
+  const q = encodeURIComponent(title || '')
+  const subdlUrl = `https://subdl.com/search/${q}`
+  const openSubsUrl = `https://www.opensubtitles.org/en/search2/sublanguageid-ind/moviename-${q}`
+  const podnapisiUrl = `https://www.podnapisi.net/subtitles/search/?keywords=${q}&language=id`
 
   return (
     <>
@@ -212,13 +216,13 @@ function SubtitleHelp() {
           <div className={styles.subtitleStep}>
             <div className={styles.subtitleStepNum}>1</div>
             <div className={styles.subtitleStepText}>
-              Cari subtitle <strong>Bahasa Indonesia</strong> untuk film/episode ini di situs subtitle. Pastikan judul & tahun rilisnya sama persis.
+              Cari subtitle <strong>Bahasa Indonesia</strong> untuk <strong>"{title}"</strong> di salah satu situs di bawah ini — hasil pencarian udah otomatis ngarah ke judul ini. Pastikan tahun rilisnya cocok.
             </div>
           </div>
           <div className={styles.subtitleLinks}>
-            <a className={styles.subtitleLink} href="https://subdl.com" target="_blank" rel="noopener noreferrer">Subdl ↗</a>
-            <a className={styles.subtitleLink} href="https://www.opensubtitles.org" target="_blank" rel="noopener noreferrer">OpenSubtitles ↗</a>
-            <a className={styles.subtitleLink} href="https://www.podnapisi.net" target="_blank" rel="noopener noreferrer">Podnapisi ↗</a>
+            <a className={styles.subtitleLink} href={subdlUrl} target="_blank" rel="noopener noreferrer">Subdl ↗</a>
+            <a className={styles.subtitleLink} href={openSubsUrl} target="_blank" rel="noopener noreferrer">OpenSubtitles ↗</a>
+            <a className={styles.subtitleLink} href={podnapisiUrl} target="_blank" rel="noopener noreferrer">Podnapisi ↗</a>
           </div>
 
           <div className={styles.subtitleStep}>
@@ -396,7 +400,7 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
             ))}
           </div>
           <div className={styles.playerNote}>{activePlayerNote}</div>
-          <SubtitleHelp />
+          <SubtitleHelp title={title} />
         </div>
 
         {/* Info section */}
