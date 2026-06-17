@@ -3,9 +3,11 @@ import { tmdb, peachifyUrl } from '../lib/tmdb'
 import styles from './PlayerModal.module.css'
 
 const PLAYERS = [
-  { id: 'primary',    label: 'Primary',    note: 'Player utama — konten paling lengkap' },
+  { id: 'primary',    label: 'Primary',    note: 'Peachify — konten Asia & Indonesia lengkap' },
+  { id: 'vidlink',   label: 'VidLink',    note: 'VidLink — subtitle Indonesia built-in ✓' },
   { id: 'vsembed',   label: 'VidSrc',     note: 'VidSrc — stabil, minim iklan' },
   { id: 'videasy',   label: 'Videasy',    note: 'Videasy — kualitas HD, subtitle lengkap' },
+  { id: '2embed',    label: '2Embed',     note: '2Embed — banyak server, konten lengkap' },
   { id: 'autoembed', label: 'AutoEmbed',  note: 'AutoEmbed — multi-server, fallback otomatis' },
   { id: 'multiembed',label: 'MultiEmbed', note: 'MultiEmbed — 10+ server, konten lengkap' },
 ]
@@ -17,6 +19,16 @@ const adWarningShown = { current: false }
 
 function buildPlayerUrl(playerId, id, type, season, episode, progress) {
   if (playerId === 'primary') return peachifyUrl(id, type, season, episode, progress)
+
+  if (playerId === 'vidlink') {
+    if (type === 'movie') return `https://vidlink.pro/movie/${id}?primaryColor=FFA500&secondaryColor=FFA500&iconColor=FFA500&autoplay=true`
+    return `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=FFA500&secondaryColor=FFA500&iconColor=FFA500&autoplay=true`
+  }
+
+  if (playerId === '2embed') {
+    if (type === 'movie') return `https://www.2embed.stream/embed/movie/${id}`
+    return `https://www.2embed.stream/embed/tv/${id}/${season}/${episode}`
+  }
 
   if (playerId === 'vsembed') {
     if (type === 'movie') return `https://${VIDSRC_DOMAIN}/embed/movie/${id}`
@@ -264,6 +276,9 @@ function SubtitleHelp({ title }) {
   )
 }
 
+// Urutan fallback: kalau primary (peachify) kosong/error, lompat ke player berikutnya
+const FALLBACK_ORDER = ['primary', 'vidlink', 'vsembed', 'videasy', '2embed', 'autoembed', 'multiembed']
+
 export default function PlayerModal({ media, onClose, isInList, onToggleWatchlist, onShowToast, progress }) {
   const [details, setDetails] = useState(null)
   const [currentSeason, setCurrentSeason] = useState(1)
@@ -272,6 +287,8 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
   const [activePlayer, setActivePlayer] = useState('primary')
   const [iframeKey, setIframeKey] = useState(0)
   const [showAdWarning, setShowAdWarning] = useState(false)
+  const [fallbackAttempt, setFallbackAttempt] = useState(0)
+  const fallbackTimerRef = useRef(null)
 
   const frozenProgress = useRef({})
 
@@ -281,17 +298,51 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const src = useMemo(() => open ? buildPlayerUrl(activePlayer, media.id, type, currentSeason, currentEpisode, frozenProgress.current) : '', [iframeKey, open, activePlayer, media?.id, type, currentSeason, currentEpisode])
 
+  // Auto-fallback: cek apakah iframe primary berhasil load dalam 8 detik
+  const handleIframeLoad = () => {
+    // Kalau berhasil load, batalkan timer fallback
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current)
+      fallbackTimerRef.current = null
+    }
+  }
+
+  const handleIframeError = () => {
+    triggerFallback('error')
+  }
+
+  const triggerFallback = (reason = 'timeout') => {
+    setFallbackAttempt(prev => {
+      const nextIndex = prev + 1
+      if (nextIndex >= FALLBACK_ORDER.length) return prev // sudah habis semua provider
+
+      const nextPlayer = FALLBACK_ORDER[nextIndex]
+      setActivePlayer(nextPlayer)
+      setIframeKey(k => k + 1)
+      const label = PLAYERS.find(p => p.id === nextPlayer)?.label || nextPlayer
+      onShowToast(`Primary tidak tersedia, beralih ke ${label}…`)
+      return nextIndex
+    })
+  }
+
   useEffect(() => {
     if (!media) { setDetails(null); return }
     document.body.style.overflow = 'hidden'
     setCurrentSeason(media.season || 1)
     setCurrentEpisode(media.episode || 1)
     setActivePlayer('primary')
+    setFallbackAttempt(0)
     frozenProgress.current = progress
     if (!adWarningShown.current) {
       adWarningShown.current = true
       setShowAdWarning(true)
     }
+
+    // Mulai timer fallback — kalau primary tidak load dalam 8 detik, lompat ke provider berikutnya
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
+    fallbackTimerRef.current = setTimeout(() => {
+      triggerFallback('timeout')
+    }, 8000)
 
     const loadDetails = async () => {
       try {
@@ -301,7 +352,10 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
       } catch { /* noop */ }
     }
     loadDetails()
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = ''
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
+    }
   }, [media])
 
   useEffect(() => {
@@ -338,6 +392,9 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
   }
 
   const switchPlayer = (id) => {
+    // Batalkan auto-fallback kalau user pilih player manual
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
+    setFallbackAttempt(FALLBACK_ORDER.indexOf(id))
     setActivePlayer(id)
     setIframeKey(k => k + 1)
     onShowToast(`Beralih ke ${PLAYERS.find(p => p.id === id)?.label}`)
@@ -376,6 +433,8 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
             referrerPolicy="no-referrer"
             title={title}
             style={{ border: 'none' }}
+            onLoad={handleIframeLoad}
+            onError={handleIframeError}
           />
         </div>
 
