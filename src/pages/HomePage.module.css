@@ -80,6 +80,7 @@
   display: flex; gap: 12px; padding: 4px 20px 16px;
   overflow-x: auto; scrollbar-width: none;
   -ms-overflow-style: none; scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
 }
 .scrollRow::-webkit-scrollbar { display: none; }
 
@@ -118,5 +119,13 @@
   background: rgba(0,0,0,0.75); border-radius: 20px; padding: 4px 10px;
   font-size: 11px; font-weight: 600; backdrop-filter: blur(8px);
 }
-.movieName { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.movieName {
+  font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  min-height: calc(12px * 1.35 * 2);
+}
 .movieSub { font-size: 11px; color: var(--text3); margin-top: 2px; }
