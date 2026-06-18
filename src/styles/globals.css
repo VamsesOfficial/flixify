@@ -21,21 +21,33 @@
   --radius: 13px;
   --radius-lg: 18px;
   --radius-xl: 24px;
-  --font: 'Nunito Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
   --blur: blur(20px) saturate(1.8);
   --nav-h: 64px;
   --tab-h: 72px;
 }
 
-html { scroll-behavior: smooth; }
+/* ── iOS safe area support ── */
+html {
+  scroll-behavior: smooth;
+  /* Prevent font size inflation on iOS landscape */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 
 body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  min-height: -webkit-fill-available; /* iOS Safari 100vh fix */
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent double-tap zoom on iOS */
+  touch-action: manipulation;
+  /* Prevent rubber-band scroll on iOS */
+  overscroll-behavior-y: none;
 }
 
 /* ── Scrollbar ── */
@@ -61,3 +73,28 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .fade-up { animation: fadeUp 0.4s ease both; }
+
+/* ── Global touch targets (min 44px for iOS HIG) ── */
+button, [role="button"] {
+  min-height: 44px;
+  cursor: pointer;
+}
+
+/* ── Prevent text selection on tappable items ── */
+.card, button, [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ── Scrollable rows: momentum scrolling for iOS ── */
+[class*="scrollRow"], [class*="cats"] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
