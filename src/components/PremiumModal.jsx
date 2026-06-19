@@ -36,14 +36,11 @@ export default function PremiumModal({ visible, onClose, onSuccess }) {
     const session = getSession()
 
     try {
-      // ── Load Midtrans Snap script once ──────────────────
-      await loadSnapScript()
-
-      // ── Get Firebase ID token for auth ──────────────────
+      // ── Get Firebase ID token ────────────────────────────────
       const idToken = await getIdToken()
       if (!idToken) throw new Error('Sesi tidak valid. Silakan login ulang.')
 
-      // ── Request token from our Vercel API ───────────────
+      // ── Request ke API kita → Tokopay ────────────────────────
       const res = await fetch('/api/create-payment', {
         method:  'POST',
         headers: {
@@ -60,36 +57,59 @@ export default function PremiumModal({ visible, onClose, onSuccess }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Gagal membuat transaksi')
 
-      // ── Open Midtrans Snap popup ─────────────────────────
-      window.snap.pay(data.token, {
-        onSuccess: async () => {
-          // Webhook sudah update Firestore via Firebase Admin SDK (server-side).
-          // Kita cukup re-fetch session dari Firestore untuk update local cache.
-          // TIDAK memanggil activatePremium() dari client.
-          const updated = await syncSessionFromFirestore()
-          setLoading(null)
-          close()
-          setTimeout(() => onSuccess(updated), 350)
-        },
-        onPending: () => {
-          setLoading(null)
-          close()
-        },
-        onError: (err) => {
-          console.error('Snap error:', err)
-          setError('Pembayaran gagal. Silakan coba lagi.')
-          setLoading(null)
-        },
-        onClose: () => {
-          // User closed Snap without paying
-          setLoading(null)
-        },
-      })
+      // ── Redirect ke halaman pembayaran Tokopay ───────────────
+      // Tokopay menyediakan pay_url yang sudah berisi semua metode pembayaran
+      if (!data.pay_url) throw new Error('Gagal mendapatkan link pembayaran')
+
+      // Simpan ref_id di sessionStorage agar bisa cek status setelah kembali
+      sessionStorage.setItem('pending_payment_ref', data.ref_id)
+      sessionStorage.setItem('pending_payment_plan', plan)
+
+      // Buka halaman pembayaran Tokopay di tab baru
+      window.open(data.pay_url, '_blank')
+
+      // Tampilkan pesan menunggu & polling status
+      setLoading(null)
+      close()
+      startPolling(data.ref_id, plan)
+
     } catch (err) {
       console.error('Payment error:', err)
       setError(err.message || 'Terjadi kesalahan. Coba lagi.')
       setLoading(null)
     }
+  }
+
+  // ── Polling status setelah user membayar ─────────────────────
+  const startPolling = (refId, plan) => {
+    let attempts = 0
+    const maxAttempts = 20 // poll max 10 menit (30 detik x 20)
+
+    const interval = setInterval(async () => {
+      attempts++
+      if (attempts > maxAttempts) {
+        clearInterval(interval)
+        return
+      }
+
+      try {
+        const idToken = await getIdToken()
+        if (!idToken) return
+
+        const res = await fetch(`/api/verify-plan`, {
+          headers: { 'Authorization': `Bearer ${idToken}` },
+        })
+        const data = await res.json()
+
+        if (data.plan === 'premium') {
+          clearInterval(interval)
+          const updated = await syncSessionFromFirestore()
+          onSuccess(updated)
+          sessionStorage.removeItem('pending_payment_ref')
+          sessionStorage.removeItem('pending_payment_plan')
+        }
+      } catch { /* silent */ }
+    }, 30000) // cek tiap 30 detik
   }
 
   if (!visible && !sheetVisible) return null
@@ -153,30 +173,10 @@ export default function PremiumModal({ visible, onClose, onSuccess }) {
           {error && <div className={styles.payError}>{error}</div>}
 
           <p className={styles.disclaimer}>
-            Pembayaran aman via Midtrans · Aktif langsung setelah bayar
+            Pembayaran aman via Tokopay · Aktif otomatis setelah bayar
           </p>
         </div>
       </div>
     </div>
   )
-}
-
-// ── Load Midtrans Snap.js once ─────────────────────────────────
-function loadSnapScript() {
-  return new Promise((resolve, reject) => {
-    if (window.snap) { resolve(); return }
-
-    const isProduction = import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true'
-    const clientKey    = import.meta.env.VITE_MIDTRANS_CLIENT_KEY || ''
-    const src = isProduction
-      ? 'https://app.midtrans.com/snap/snap.js'
-      : 'https://app.sandbox.midtrans.com/snap/snap.js'
-
-    const script = document.createElement('script')
-    script.src = src
-    script.setAttribute('data-client-key', clientKey)
-    script.onload  = resolve
-    script.onerror = () => reject(new Error('Gagal memuat payment gateway'))
-    document.head.appendChild(script)
-  })
 }
