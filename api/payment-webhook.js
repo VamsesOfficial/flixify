@@ -3,21 +3,20 @@
  * Vercel Serverless Function
  *
  * POST /api/payment-webhook
- * Midtrans sends notification here after payment status changes.
+ * Tokopay mengirim notifikasi ke sini setelah pembayaran berhasil.
  *
  * ENV VARS required:
- *   MIDTRANS_SERVER_KEY
- *   MIDTRANS_IS_PRODUCTION
+ *   TOKOPAY_MERCHANT_ID
+ *   TOKOPAY_SECRET_KEY
  *   FIREBASE_PROJECT_ID
  *   FIREBASE_CLIENT_EMAIL
- *   FIREBASE_PRIVATE_KEY   (paste the full key from Firebase service account JSON, including \n)
+ *   FIREBASE_PRIVATE_KEY
  */
 
-import { createHmac } from 'crypto'
-import { initializeApp, cert, getApps } from 'firebase-admin/app'
-import { getFirestore }                  from 'firebase-admin/firestore'
+import { createHash }                    from 'crypto'
+import { initializeApp, cert, getApps }  from 'firebase-admin/app'
+import { getFirestore }                   from 'firebase-admin/firestore'
 
-// Initialise Firebase Admin (safe to call multiple times on warm lambda)
 function getAdminDb() {
   if (!getApps().length) {
     initializeApp({
@@ -34,73 +33,95 @@ function getAdminDb() {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const body        = req.body
-  const serverKey   = process.env.MIDTRANS_SERVER_KEY
-  const orderId     = body.order_id
-  const statusCode  = body.status_code
-  const grossAmount = body.gross_amount
+  const body       = req.body
+  const merchantId = process.env.TOKOPAY_MERCHANT_ID
+  const secretKey  = process.env.TOKOPAY_SECRET_KEY
+  const refId      = body.reff_id
+  const status     = body.status // 'Success' | 'Completed' | 'Pending' | 'Failed'
 
-  // ── Verify Midtrans signature ──────────────────────────────
-  const expectedSig = createHmac('sha512', serverKey)
-    .update(`${orderId}${statusCode}${grossAmount}${serverKey}`)
+  // ── Verifikasi signature Tokopay: md5(merchant_id:secret:ref_id) ──
+  const expectedSig = createHash('md5')
+    .update(`${merchantId}:${secretKey}:${refId}`)
     .digest('hex')
 
-  if (body.signature_key !== expectedSig) {
-    console.warn('Invalid Midtrans signature')
-    return res.status(403).json({ error: 'Invalid signature' })
+  if (body.signature !== expectedSig) {
+    console.warn('Invalid Tokopay signature')
+    return res.status(403).json({ status: false })
   }
 
-  const transactionStatus = body.transaction_status
-  const fraudStatus       = body.fraud_status
-
-  const isSuccess =
-    (transactionStatus === 'capture' && fraudStatus === 'accept') ||
-    transactionStatus === 'settlement'
-
+  // Hanya proses jika status sukses
+  const isSuccess = status === 'Success' || status === 'Completed'
   if (!isSuccess) {
-    // Not yet paid / pending / failed — just acknowledge
-    return res.status(200).json({ status: 'ignored', transactionStatus })
+    return res.status(200).json({ status: true }) // acknowledge, tapi tidak proses
   }
 
-  // ── Activate premium in Firestore ─────────────────────────
-  const userId = body.custom_field1
-  const plan   = body.custom_field2
+  // ── Parsing uid & plan dari ref_id: FLX-M-<uid12>-<ts> ──
+  // Format: FLX-M-... = monthly, FLX-W-... = weekly
+  const parts   = refId.split('-')  // ['FLX', 'M'/'W', uid12, ts]
+  const planKey = parts[1]          // 'M' atau 'W'
+  const uid12   = parts[2]          // uid 12 karakter pertama
 
-  if (!userId || !plan) {
-    console.error('Missing custom_field1/2 in webhook body')
-    return res.status(400).json({ error: 'Missing user metadata' })
+  if (!planKey || !uid12) {
+    console.error('Cannot parse plan/uid from ref_id:', refId)
+    return res.status(400).json({ status: false })
   }
 
-  const expiry = new Date()
-  if (plan === 'monthly') expiry.setDate(expiry.getDate() + 30)
-  else                    expiry.setDate(expiry.getDate() + 7)
+  const plan = planKey === 'M' ? 'monthly' : 'weekly'
+
+  // ── Cari user di Firestore berdasarkan uid prefix ──────────
+  // uid disimpan sebagai doc ID, jadi kita query dengan prefix
+  const db = getAdminDb()
 
   try {
-    const db = getAdminDb()
+    // Cari user yang uid-nya dimulai dengan uid12
+    const snapshot = await db.collection('users')
+      .orderBy('__name__')
+      .startAt(uid12)
+      .endAt(uid12 + '\uf8ff')
+      .limit(1)
+      .get()
+
+    if (snapshot.empty) {
+      console.error('User not found for uid prefix:', uid12)
+      return res.status(404).json({ status: false })
+    }
+
+    const userDoc = snapshot.docs[0]
+    const userId  = userDoc.id
+
+    // ── Hitung expiry ──────────────────────────────────────────
+    const expiry = new Date()
+    if (plan === 'monthly') expiry.setDate(expiry.getDate() + 30)
+    else                    expiry.setDate(expiry.getDate() + 7)
+
+    // ── Update Firestore ───────────────────────────────────────
     await db.collection('users').doc(userId).update({
       plan:        'premium',
       planExpiry:  expiry.toISOString(),
-      lastOrderId: orderId,
+      lastOrderId: refId,
       updatedAt:   new Date().toISOString(),
     })
 
-    // Record in payments sub-collection for audit trail
     await db.collection('payments').add({
       userId,
       plan,
-      orderId,
-      amount:          body.gross_amount,
-      paymentType:     body.payment_type,
-      transactionTime: body.transaction_time,
-      status:          transactionStatus,
+      orderId:         refId,
+      trxId:           body.reference,
+      amount:          body.data?.total_dibayar,
+      amountReceived:  body.data?.total_diterima,
+      paymentChannel:  body.data?.payment_channel,
+      transactionTime: body.data?.updated_at,
+      status,
       planExpiry:      expiry.toISOString(),
       createdAt:       new Date().toISOString(),
     })
 
     console.log(`Premium activated: user=${userId} plan=${plan} expiry=${expiry.toISOString()}`)
-    return res.status(200).json({ status: 'ok' })
+
+    // Tokopay wajib dapat response { status: true }
+    return res.status(200).json({ status: true })
   } catch (err) {
     console.error('Firestore update failed:', err)
-    return res.status(500).json({ error: 'Database error' })
+    return res.status(500).json({ status: false })
   }
 }
