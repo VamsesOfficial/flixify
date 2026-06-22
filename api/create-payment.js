@@ -69,7 +69,7 @@ export default async function handler(req, res) {
 
   const payload = {
     merchant_id:    merchantId,
-    kode_channel:   'QRISR', // bisa diganti: BRIVA, BNIVAOP, QRISREALTIME, dll
+    kode_channel:   'QRIS', // bisa diganti: BRIVA, BNIVAOP, QRISREALTIME, dll
     reff_id:        refId,
     amount,
     customer_name:  name  || 'User',
