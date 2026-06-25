@@ -298,6 +298,19 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const src = useMemo(() => open ? buildPlayerUrl(activePlayer, media.id, type, currentSeason, currentEpisode, frozenProgress.current) : '', [iframeKey, open, activePlayer, media?.id, type, currentSeason, currentEpisode])
 
+  // ── Auto-refocus: tarik balik ke Flixify saat tab baru iklan kebuka ──
+  useEffect(() => {
+    if (!open) return
+    const onBlur = () => setTimeout(() => window.focus(), 150)
+    const onVisibility = () => { if (document.visibilityState === 'visible') window.focus() }
+    window.addEventListener('blur', onBlur)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('blur', onBlur)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [open])
+
   // Auto-fallback: cek apakah iframe primary berhasil load dalam 8 detik
   const handleIframeLoad = () => {
     // Kalau berhasil load, batalkan timer fallback
