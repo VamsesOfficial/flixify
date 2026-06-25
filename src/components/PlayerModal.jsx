@@ -298,17 +298,25 @@ export default function PlayerModal({ media, onClose, isInList, onToggleWatchlis
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const src = useMemo(() => open ? buildPlayerUrl(activePlayer, media.id, type, currentSeason, currentEpisode, frozenProgress.current) : '', [iframeKey, open, activePlayer, media?.id, type, currentSeason, currentEpisode])
 
-  // ── Auto-refocus: tarik balik ke Flixify saat tab baru iklan kebuka ──
+  // ── Auto-close tab iklan: override window.open di parent ──
+  // Kalau embed provider buka tab via window.open yang bubble ke parent,
+  // kita simpan referencenya dan langsung close.
   useEffect(() => {
     if (!open) return
-    const onBlur = () => setTimeout(() => window.focus(), 150)
-    const onVisibility = () => { if (document.visibilityState === 'visible') window.focus() }
-    window.addEventListener('blur', onBlur)
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      window.removeEventListener('blur', onBlur)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
+    const originalOpen = window.open
+    window.open = new Proxy(originalOpen, {
+      apply(target, thisArg, args) {
+        const newTab = Reflect.apply(target, thisArg, args)
+        if (newTab) {
+          try { newTab.close() } catch {}
+          setTimeout(() => { try { newTab.close() } catch {} }, 0)
+          setTimeout(() => { try { newTab.close() } catch {} }, 100)
+          setTimeout(() => { try { newTab.close() } catch {} }, 500)
+        }
+        return newTab
+      }
+    })
+    return () => { window.open = originalOpen }
   }, [open])
 
   // Auto-fallback: cek apakah iframe primary berhasil load dalam 8 detik
